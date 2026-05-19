@@ -16,19 +16,23 @@ export function PropertiesPanel({ ops }: { ops: OpSchema[] }) {
 
   if (!node) {
     return (
-      <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>
-        Select a node to edit its attributes and initializers.
+      <div className="properties-pane">
+        <div className="properties-empty">
+          Select a node to edit its attributes and initializers.
+        </div>
       </div>
     );
   }
 
   if (node.data.kind === "io") {
     return (
-      <div>
-        <h4 style={{ margin: "4px 0 8px" }}>{node.data.io}</h4>
-        <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>
-          Fixed [1, 10, 30, 30] float tensor. The output node receives the network's final tensor;
-          it must be threshold-able to {">"} 0.0 to match the expected one-hot grid.
+      <div className="properties-pane">
+        <div className="node-header">
+          <h4>{node.data.io}</h4>
+          <div className="helper-text">
+            Fixed [1, 10, 30, 30] float tensor. The output node receives the network's final
+            tensor; it must be threshold-able to {">"} 0.0 to match the expected one-hot grid.
+          </div>
         </div>
       </div>
     );
@@ -36,37 +40,25 @@ export function PropertiesPanel({ ops }: { ops: OpSchema[] }) {
 
   if (!opSchema) {
     return (
-      <div className="error-banner">unknown op: {(node.data as OpNodeData).op}</div>
+      <div className="properties-pane">
+        <div className="error-banner">unknown op: {(node.data as OpNodeData).op}</div>
+      </div>
     );
   }
 
   const data = node.data as OpNodeData;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <h4 style={{ margin: "4px 0 4px" }}>{opSchema.name}</h4>
-        <div style={{ fontSize: 11, color: "var(--fg-muted)" }}>
+    <div className="properties-pane">
+      <div className="node-header">
+        <h4>{opSchema.name}</h4>
+        <div className="helper-text">
           opset {opSchema.sinceVersion} · id <code>{node.id}</code>
         </div>
-        {opSchema.doc && (
-          <div style={{ fontSize: 11, color: "var(--fg-muted)", marginTop: 4 }}>
-            {opSchema.doc}
-          </div>
-        )}
+        {opSchema.doc && <div className="helper-text">{opSchema.doc}</div>}
       </div>
 
-      <section>
-        <div
-          style={{
-            fontSize: 11,
-            color: "var(--fg-muted)",
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-            marginBottom: 6,
-          }}
-        >
-          Attributes
-        </div>
+      <section className="properties-section">
+        <div className="section-header">Attributes</div>
         <AttributeForm
           schema={opSchema}
           values={data.attrs}
@@ -74,21 +66,11 @@ export function PropertiesPanel({ ops }: { ops: OpSchema[] }) {
         />
       </section>
 
-      <section>
-        <div
-          style={{
-            fontSize: 11,
-            color: "var(--fg-muted)",
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-            marginBottom: 6,
-          }}
-        >
-          Initializers
-        </div>
-        <div style={{ fontSize: 11, color: "var(--fg-muted)", marginBottom: 4 }}>
-          Each initializer's <code>name</code> must match a formal input (e.g.{" "}
-          <code>W</code> for Conv) — initializers fill any inputs not connected by an edge.
+      <section className="properties-section">
+        <div className="section-header">Initializers</div>
+        <div className="helper-text" style={{ marginBottom: 10 }}>
+          Each initializer's <code>name</code> must match a formal input (e.g. <code>W</code> for
+          Conv) — initializers fill any inputs not connected by an edge.
         </div>
         <InitializerEditor
           initializers={data.initializers}

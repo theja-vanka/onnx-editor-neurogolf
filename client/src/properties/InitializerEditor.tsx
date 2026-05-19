@@ -63,14 +63,14 @@ function Card({
 
   return (
     <div className="initializer-card">
-      <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+      <div className="initializer-card-head">
         <input
           style={{ flex: 1 }}
           value={value.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="name (e.g. W)"
         />
-        <button onClick={onRemove}>✕</button>
+        <button onClick={onRemove} title="remove">✕</button>
       </div>
 
       <div className="attr-row">

@@ -4,7 +4,6 @@ import ReactFlow, { Background, Controls, MiniMap, ReactFlowProvider, useReactFl
 import "reactflow/dist/style.css";
 import { api } from "../api";
 import { useEditor } from "../store";
-import { OpPalette } from "./OpPalette";
 import { IONode } from "./nodes/IONode";
 import { OpNode } from "./nodes/OpNode";
 import { useKeyboardShortcuts } from "./shortcuts";
@@ -75,5 +74,5 @@ function Inner({ ops }) {
         }, 400);
         return () => window.clearTimeout(handle);
     }, [nodes, edges, setEdgeShapes]);
-    return (_jsxs("div", { ref: wrapperRef, style: { width: "100%", height: "100%" }, children: [_jsxs(ReactFlow, { nodes: nodes, edges: edges, onNodesChange: onNodesChange, onEdgesChange: onEdgesChange, onConnect: onConnect, nodeTypes: nodeTypes, edgeTypes: edgeTypes, onDrop: onDrop, onDragOver: onDragOver, onSelectionChange: ({ nodes }) => select(nodes[0]?.id ?? null), fitView: true, proOptions: { hideAttribution: true }, children: [_jsx(Background, { gap: 20 }), _jsx(Controls, { position: "bottom-left" }), _jsx(MiniMap, { pannable: true, zoomable: true })] }), _jsx(OpPalette, { ops: ops }), _jsx(ValidateDock, {})] }));
+    return (_jsxs("div", { ref: wrapperRef, style: { width: "100%", height: "100%" }, children: [_jsxs(ReactFlow, { nodes: nodes, edges: edges, onNodesChange: onNodesChange, onEdgesChange: onEdgesChange, onConnect: onConnect, nodeTypes: nodeTypes, edgeTypes: edgeTypes, onDrop: onDrop, onDragOver: onDragOver, onSelectionChange: ({ nodes }) => select(nodes[0]?.id ?? null), fitView: true, proOptions: { hideAttribution: true }, children: [_jsx(Background, { gap: 20 }), _jsx(Controls, { position: "bottom-left" }), _jsx(MiniMap, { pannable: true, zoomable: true })] }), _jsx(ValidateDock, {})] }));
 }

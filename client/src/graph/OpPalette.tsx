@@ -12,10 +12,8 @@ export function OpPalette({ ops }: { ops: OpSchema[] }) {
 
   return (
     <div className="palette">
-      <header>Ops · opset 10 · {ops.length} available</header>
       <div className="search">
         <input
-          autoFocus={false}
           placeholder="search ops…"
           value={q}
           onChange={(e) => setQ(e.target.value)}

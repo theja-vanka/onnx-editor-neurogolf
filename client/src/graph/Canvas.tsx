@@ -14,7 +14,6 @@ import "reactflow/dist/style.css";
 import { api } from "../api";
 import { useEditor } from "../store";
 import type { OpSchema } from "../types";
-import { OpPalette } from "./OpPalette";
 import { IONode } from "./nodes/IONode";
 import { OpNode } from "./nodes/OpNode";
 import { useKeyboardShortcuts } from "./shortcuts";
@@ -134,7 +133,6 @@ function Inner({ ops }: { ops: OpSchema[] }) {
         <Controls position="bottom-left" />
         <MiniMap pannable zoomable />
       </ReactFlow>
-      <OpPalette ops={ops} />
       <ValidateDock />
     </div>
   );

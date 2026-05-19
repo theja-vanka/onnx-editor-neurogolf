@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { Canvas } from "./graph/Canvas";
+import { OpPalette } from "./graph/OpPalette";
 import { ThemeProvider } from "./layout/ThemeProvider";
 import { ThreePane } from "./layout/ThreePane";
 import { PropertiesPanel } from "./properties/PropertiesPanel";
@@ -78,13 +79,16 @@ export default function App() {
             <div className="error-banner">{error}</div>
           </div>
         )}
+        <section className="examples-strip">
+          <ExamplesPanel />
+        </section>
         {ops ? (
           <ThreePane
             left={
               <>
-                <h3>Task examples</h3>
-                <div className="body">
-                  <ExamplesPanel />
+                <h3>Ops · opset 10 · {ops.length}</h3>
+                <div className="body" style={{ padding: 0 }}>
+                  <OpPalette ops={ops} />
                 </div>
               </>
             }

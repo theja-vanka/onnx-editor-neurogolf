@@ -21,16 +21,16 @@ export function ExamplesPanel() {
 
   if (!taskNum) {
     return (
-      <div style={{ color: "var(--fg-muted)", fontSize: 12 }}>
+      <div className="examples-empty">
         Pick a task to see its train / test / arc-gen examples.
       </div>
     );
   }
-  if (error) return <div className="error-banner">{error}</div>;
-  if (!task) return <div style={{ color: "var(--fg-muted)" }}>loading…</div>;
+  if (error) return <div className="error-banner" style={{ margin: 8 }}>{error}</div>;
+  if (!task) return <div className="examples-empty">loading…</div>;
 
   return (
-    <div className="examples">
+    <div className="examples-row">
       <ExampleGroup label="train" examples={task.train} />
       <ExampleGroup label="test" examples={task.test} />
       {task["arc-gen"] && task["arc-gen"]!.length > 0 && (
@@ -48,17 +48,17 @@ function ExampleGroup({
   examples: { input: number[][]; output: number[][] }[];
 }) {
   return (
-    <div className="example-block">
-      <div className="label">
+    <div className="example-group">
+      <div className="example-group-label">
         <span>{label}</span>
-        <span style={{ color: "var(--fg-muted)" }}>{examples.length}</span>
+        <span className="count">{examples.length}</span>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div className="example-group-items">
         {examples.map((e, i) => (
           <div key={`${label}-${i}`} className="example-pair">
-            <ArcGridView grid={e.input} />
+            <ArcGridView grid={e.input} cellSize={6} />
             <span className="example-arrow">→</span>
-            <ArcGridView grid={e.output} />
+            <ArcGridView grid={e.output} cellSize={6} />
           </div>
         ))}
       </div>
