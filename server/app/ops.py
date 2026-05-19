@@ -53,10 +53,11 @@ def _formal_param(fp: onnx.defs.OpSchema.FormalParameter) -> dict[str, Any]:
             option = "optional"
     except AttributeError:
         pass
+    type_str = getattr(fp, "type_str", None) or getattr(fp, "typeStr", "")
     return {
         "name": fp.name,
         "description": (fp.description or "").strip(),
-        "typeStr": fp.typeStr,
+        "typeStr": type_str,
         "option": option,
     }
 

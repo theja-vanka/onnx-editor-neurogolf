@@ -5,12 +5,15 @@ UVICORN := $(VENV)/bin/uvicorn
 
 DATA_DIR ?= $(abspath data)
 
-.PHONY: help install install-server install-client dev server client clean
+.PHONY: help install install-server install-client dev start server client clean
+
+SHELL := /bin/bash
 
 help:
 	@echo "Targets:"
 	@echo "  make install        - create venv, install python + node deps"
 	@echo "  make dev            - run backend (uvicorn) and frontend (vite) together"
+	@echo "  make start          - alias for 'make dev'"
 	@echo "  make server         - run backend only"
 	@echo "  make client         - run frontend only"
 	@echo "  make clean          - remove venv and node_modules"
@@ -33,11 +36,15 @@ server:
 client:
 	cd client && npm run dev
 
-dev:
-	@command -v npx >/dev/null 2>&1 || { echo "node/npm required for dev target"; exit 1; }
-	@( DATA_DIR=$(DATA_DIR) $(UVICORN) app.main:app --reload --port 8000 --app-dir server & echo $$! > /tmp/onnx-editor-server.pid ) && \
-	( cd client && npm run dev ) ; \
-	kill `cat /tmp/onnx-editor-server.pid` 2>/dev/null ; rm -f /tmp/onnx-editor-server.pid
+dev start:
+	@command -v npm >/dev/null 2>&1 || { echo "node/npm required for dev target"; exit 1; }
+	@test -x $(UVICORN) || { echo "uvicorn not found at $(UVICORN). Run 'make install' first."; exit 1; }
+	@echo "→ backend  http://localhost:8000"
+	@echo "→ frontend http://localhost:5173"
+	@trap 'kill 0' INT TERM EXIT; \
+	  DATA_DIR=$(DATA_DIR) $(UVICORN) app.main:app --reload --port 8000 --app-dir server & \
+	  ( cd client && npm run dev ) & \
+	  wait
 
 clean:
 	rm -rf $(VENV) client/node_modules client/dist

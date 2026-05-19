@@ -66,6 +66,16 @@ def infer_edge_shapes(spec: dict[str, Any]) -> dict[str, Any]:
             num = max(1, len(sch["outputs"])) if sch else 1
             node_outputs[nid] = [f"{nid}__out{i}" for i in range(num)]
 
+    output_name = spec.get("io", {}).get("outputName", "output")
+    for e in spec.get("edges", []):
+        if e.get("toNode") == "output":
+            src = e.get("fromNode")
+            port = int(e.get("fromPort", 0))
+            outs = node_outputs.get(src)
+            if outs and 0 <= port < len(outs):
+                outs[port] = output_name
+            break
+
     edge_shapes: dict[str, list[int | str]] = {}
     for e in spec.get("edges", []):
         eid = e.get("id")
