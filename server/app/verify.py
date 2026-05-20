@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import math
-import traceback
 from typing import Any
 
 import numpy as np
@@ -195,10 +194,10 @@ def _verify_subset(
             user_output = _run_network(session, benchmark["input"])
             rec["actual"] = _convert_from_numpy(user_output)
             rec["pass"] = bool(np.array_equal(user_output, benchmark["output"]))
-        except onnxruntime.OrtException as e:
+        except Exception as e:
+            # Any per-example failure (shape/type mismatch, missing input, etc.)
+            # is recorded as a failed example rather than aborting the whole run.
             rec["error"] = f"runtime error: {e}"
-        except Exception:
-            rec["error"] = traceback.format_exc()
         out.append(rec)
     return out
 

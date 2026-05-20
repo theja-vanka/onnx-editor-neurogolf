@@ -27,6 +27,12 @@ export const api = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(spec),
     }).then((r) => jsonOrThrow<{ onnxB64: string; byteSize: number }>(r)),
+  importOnnx: (onnxB64: string) =>
+    fetch(`${base}/api/import-onnx`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ onnxB64 }),
+    }).then((r) => jsonOrThrow<{ spec: GraphSpec; warnings: string[] }>(r)),
   inferShapes: (spec: GraphSpec) =>
     fetch(`${base}/api/infer-shapes`, {
       method: "POST",

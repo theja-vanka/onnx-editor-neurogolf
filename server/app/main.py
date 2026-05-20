@@ -4,11 +4,13 @@ from __future__ import annotations
 import base64
 from typing import Any
 
+import onnx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .graph_build import BuildError, build_model
+from .onnx_import import onnx_to_spec
 from .ops import list_ops
 from .shape_infer import infer_edge_shapes
 from .tasks import list_tasks, load_task
@@ -34,6 +36,14 @@ class GraphSpec(BaseModel):
 class ValidateRequest(BaseModel):
     spec: GraphSpec
     taskNum: int
+
+
+class ImportOnnxRequest(BaseModel):
+    onnxB64: str
+
+
+# Reject pathologically large uploads before we try to decode/parse them.
+_MAX_ONNX_BYTES = 64 * 1024 * 1024
 
 
 @app.get("/api/health")
@@ -72,6 +82,27 @@ def post_build(spec: GraphSpec) -> dict[str, Any]:
         "onnxB64": base64.b64encode(blob).decode("ascii"),
         "byteSize": len(blob),
     }
+
+
+@app.post("/api/import-onnx")
+def post_import_onnx(req: ImportOnnxRequest) -> dict[str, Any]:
+    try:
+        blob = base64.b64decode(req.onnxB64, validate=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"invalid base64 payload: {e}")
+    if len(blob) > _MAX_ONNX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"model is {len(blob)} bytes; limit is {_MAX_ONNX_BYTES} bytes",
+        )
+    try:
+        model = onnx.load_model_from_string(blob)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"not a valid .onnx model: {e}")
+    try:
+        return onnx_to_spec(model)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"could not convert model to graph: {e}")
 
 
 @app.post("/api/infer-shapes")

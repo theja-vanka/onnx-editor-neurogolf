@@ -54,6 +54,9 @@ export interface EditorStore {
   nodes: AnyNode[];
   edges: AnyEdge[];
   selectedNodeId: string | null;
+  // Bumped whenever the whole graph is replaced (task switch / reset / import),
+  // so the canvas knows to re-fit the view.
+  graphEpoch: number;
 
   setNodes: (nodes: AnyNode[]) => void;
   setEdges: (edges: AnyEdge[]) => void;
@@ -109,16 +112,18 @@ export const useEditor = create<EditorStore>((set, get) => ({
   currentTask: 0,
   setCurrentTask: (n) => {
     const restored = restore(n);
+    const epoch = get().graphEpoch + 1;
     if (restored) {
-      set({ currentTask: n, nodes: restored.nodes, edges: restored.edges, selectedNodeId: null, edgeShapes: {} });
+      set({ currentTask: n, nodes: restored.nodes, edges: restored.edges, selectedNodeId: null, edgeShapes: {}, graphEpoch: epoch });
     } else {
-      set({ currentTask: n, nodes: defaultIO(), edges: [], selectedNodeId: null, edgeShapes: {} });
+      set({ currentTask: n, nodes: defaultIO(), edges: [], selectedNodeId: null, edgeShapes: {}, graphEpoch: epoch });
     }
   },
 
   nodes: defaultIO(),
   edges: [],
   selectedNodeId: null,
+  graphEpoch: 0,
 
   setNodes: (nodes) => {
     set({ nodes });
@@ -203,7 +208,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
   resetGraph: () => {
     const n = get().currentTask;
     const nodes = defaultIO();
-    set({ nodes, edges: [], selectedNodeId: null, edgeShapes: {} });
+    set({ nodes, edges: [], selectedNodeId: null, edgeShapes: {}, graphEpoch: get().graphEpoch + 1 });
     persist(n, nodes, []);
   },
 
@@ -243,15 +248,24 @@ export const useEditor = create<EditorStore>((set, get) => ({
   },
 
   fromSpec: (spec) => {
-    const nodes: AnyNode[] = defaultIO();
-    for (const n of spec.nodes) {
-      nodes.push({
-        id: n.id,
-        type: "op",
-        position: n.position ?? { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
-        data: { kind: "op", op: n.op, attrs: n.attrs ?? {}, initializers: n.initializers ?? [] },
-      });
+    const io = defaultIO();
+    const [inputNode, outputNode] = io;
+    const opNodes: AnyNode[] = spec.nodes.map((n) => ({
+      id: n.id,
+      type: "op",
+      position: n.position ?? { x: 200 + Math.random() * 200, y: 100 + Math.random() * 200 },
+      data: { kind: "op", op: n.op, attrs: n.attrs ?? {}, initializers: n.initializers ?? [] },
+    }));
+    // Bracket the Input / Output nodes around the imported graph so it reads
+    // left-to-right regardless of how many layers it has.
+    if (opNodes.length > 0) {
+      const xs = opNodes.map((n) => n.position.x);
+      const ys = opNodes.map((n) => n.position.y);
+      const midY = (Math.min(...ys) + Math.max(...ys)) / 2;
+      inputNode.position = { x: Math.min(...xs) - 220, y: midY };
+      outputNode.position = { x: Math.max(...xs) + 240, y: midY };
     }
+    const nodes: AnyNode[] = [inputNode, outputNode, ...opNodes];
     const edges: AnyEdge[] = spec.edges.map((e) => ({
       id: e.id,
       source: e.fromNode,
@@ -259,7 +273,7 @@ export const useEditor = create<EditorStore>((set, get) => ({
       target: e.toNode,
       targetHandle: typeof e.toPort === "string" ? `in-${e.toPort}` : `in-${e.toPort}`,
     }));
-    set({ nodes, edges, selectedNodeId: null, edgeShapes: {} });
+    set({ nodes, edges, selectedNodeId: null, edgeShapes: {}, graphEpoch: get().graphEpoch + 1 });
     persist(get().currentTask, nodes, edges);
   },
 

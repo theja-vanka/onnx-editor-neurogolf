@@ -69,6 +69,11 @@ export interface InitializerSpec {
   expr?: string;
   vars?: string[];
   data_b64?: string;
+  // Which formal input slot this weight binds to (formal name or index). Set by
+  // the .onnx importer so weights keep their original unique names instead of
+  // being renamed to the formal input (which collides across nodes). Hand-built
+  // initializers omit it and bind by name == formal input name.
+  input?: string | number;
 }
 
 export interface GraphNodeSpec {

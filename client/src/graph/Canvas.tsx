@@ -72,9 +72,17 @@ function Inner({ ops }: { ops: OpSchema[] }) {
   const addOpNode = useEditor((s) => s.addOpNode);
   const select = useEditor((s) => s.select);
   const setEdgeShapes = useEditor((s) => s.setEdgeShapes);
-  const { screenToFlowPosition } = useReactFlow();
+  const graphEpoch = useEditor((s) => s.graphEpoch);
+  const { screenToFlowPosition, fitView } = useReactFlow();
 
   useKeyboardShortcuts();
+
+  // Re-fit the viewport whenever the whole graph is swapped out (task switch,
+  // reset, or .onnx / .json import), once the new nodes have been laid out.
+  useEffect(() => {
+    const handle = window.setTimeout(() => fitView({ padding: 0.2, duration: 300 }), 60);
+    return () => window.clearTimeout(handle);
+  }, [graphEpoch, fitView]);
 
   const opNames = useMemo(() => new Set(ops.map((o) => o.name)), [ops]);
 

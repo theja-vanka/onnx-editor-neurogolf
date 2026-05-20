@@ -11,6 +11,27 @@ import { TaskPicker } from "./tasks/TaskPicker";
 import { useEditor } from "./store";
 import type { OpSchema } from "./types";
 
+// Base64-encode an ArrayBuffer in chunks (avoids blowing the call stack / arg
+// limit that String.fromCharCode(...wholeArray) hits on large model files).
+function arrayBufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  const chunk = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+// "task042.onnx" / "task001.onnx" -> 42 / 1, so an exported model re-opens its
+// ARC task. Returns null for names that don't follow the task<NNN>.onnx scheme.
+function taskNumFromFilename(name: string): number | null {
+  const m = /task0*(\d+)\.onnx$/i.exec(name);
+  if (!m) return null;
+  const n = parseInt(m[1], 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export default function App() {
   const [ops, setOps] = useState<OpSchema[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -20,6 +41,7 @@ export default function App() {
   const resetGraph = useEditor((s) => s.resetGraph);
   const fromSpec = useEditor((s) => s.fromSpec);
   const toSpec = useEditor((s) => s.toSpec);
+  const setCurrentTask = useEditor((s) => s.setCurrentTask);
 
   useEffect(() => {
     api
@@ -30,6 +52,37 @@ export default function App() {
       })
       .catch((e) => setError(String(e.message ?? e)));
   }, [loadForTask]);
+
+  const importOnnx = async () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".onnx,application/octet-stream";
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      try {
+        const b64 = arrayBufferToBase64(await file.arrayBuffer());
+        const { spec, warnings } = await api.importOnnx(b64);
+        // If the file is named like task042.onnx, switch to that ARC task so its
+        // examples render alongside the graph. Must run *before* fromSpec, since
+        // setCurrentTask clears the graph.
+        const taskNum = taskNumFromFilename(file.name);
+        if (taskNum != null) setCurrentTask(taskNum);
+        fromSpec(spec);
+        const taskNote = taskNum != null ? ` · loaded task ${String(taskNum).padStart(3, "0")}` : "";
+        setError(
+          warnings.length
+            ? `Imported "${file.name}"${taskNote} with ${warnings.length} warning(s):\n` +
+                warnings.slice(0, 10).join("\n") +
+                (warnings.length > 10 ? `\n…and ${warnings.length - 10} more` : "")
+            : null,
+        );
+      } catch (e) {
+        setError(`onnx import failed: ${String((e as Error).message ?? e)}`);
+      }
+    };
+    input.click();
+  };
 
   const importJson = async () => {
     const input = document.createElement("input");
@@ -68,6 +121,7 @@ export default function App() {
           <span className="pill">NeuroGolf 2026</span>
           <TaskPicker />
           <span className="spacer" />
+          <button onClick={importOnnx}>Import .onnx</button>
           <button onClick={importJson}>Import .json</button>
           <button onClick={exportJson}>Export .json</button>
           <button onClick={resetGraph}>Reset</button>

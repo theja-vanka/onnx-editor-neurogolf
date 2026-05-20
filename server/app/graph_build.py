@@ -75,6 +75,31 @@ def _attr_to_proto(op_name: str, attr_name: str, value: Any, attrs_schema: dict[
     raise BuildError(f"{op_name}.{attr_name}: unsupported attribute type {t}")
 
 
+def _init_slot(init_spec: dict[str, Any], formal_inputs: list[dict[str, Any]]) -> int | None:
+    """Which formal input index an initializer binds to.
+
+    Prefers an explicit ``input`` field (formal name or index — set by the .onnx
+    importer so weights can keep their original unique names). Falls back to
+    matching the initializer's own name against a formal input name, which is how
+    hand-built and exported graphs attach weights.
+    """
+    inp = init_spec.get("input")
+    if inp is None:
+        name = init_spec.get("name")
+        for i, fp in enumerate(formal_inputs):
+            if fp["name"] == name:
+                return i
+        return None
+    if isinstance(inp, bool):  # bool is an int subclass; never a valid slot
+        return None
+    if isinstance(inp, int):
+        return inp
+    for i, fp in enumerate(formal_inputs):
+        if fp["name"] == inp:
+            return i
+    return None
+
+
 def _resolve_port(op_name: str, formal_inputs: list[dict[str, Any]], port: Any) -> int:
     if isinstance(port, int):
         if port < 0 or port >= max(len(formal_inputs), port + 1):
@@ -162,6 +187,7 @@ def build_model(spec: dict[str, Any]) -> onnx.ModelProto:
     onnx_nodes: list[onnx.NodeProto] = []
     initializers: list[onnx.TensorProto] = []
     init_names: set[str] = set()
+    init_blobs: dict[str, bytes] = {}  # name -> serialized tensor, to detect real clashes
 
     for n in nodes_spec:
         nid = n["id"]
@@ -170,33 +196,44 @@ def build_model(spec: dict[str, Any]) -> onnx.ModelProto:
         op = n["op"]
         sch = schemas[op]
         attrs_schema = {a["name"]: a for a in sch["attributes"]}
+        formal_inputs = sch["inputs"]
 
-        # Materialize initializers for this node.
+        # Materialize this node's initializers and remember which input slot each
+        # binds to. Names are global tensor names; identical tensors reused under
+        # the same name (a shared weight) are added once, but a name reused for
+        # *different* data is a genuine clash.
+        node_init_by_slot: dict[int, str] = {}
         for init_spec in n.get("initializers", []) or []:
             tp = build_initializer(init_spec)
+            blob = tp.SerializeToString()
             if tp.name in init_names:
-                raise BuildError(f"duplicate initializer name {tp.name!r}")
-            initializers.append(tp)
-            init_names.add(tp.name)
+                if init_blobs.get(tp.name) != blob:
+                    raise BuildError(f"duplicate initializer name {tp.name!r} with differing data")
+            else:
+                initializers.append(tp)
+                init_names.add(tp.name)
+                init_blobs[tp.name] = blob
+            slot = _init_slot(init_spec, formal_inputs)
+            if slot is not None:
+                node_init_by_slot[slot] = tp.name
 
-        # Resolve inputs: prefer edges; fall back to initializer names that match formal input names.
+        # Resolve inputs: edges first, then initializers bound to a slot.
         edge_inputs = incoming[nid]
-        formal_inputs = sch["inputs"]
         inputs_resolved: list[str] = []
-        max_idx = -1
+        max_idx = len(formal_inputs) - 1
         if edge_inputs:
-            max_idx = max(edge_inputs)
-        max_idx = max(max_idx, len(formal_inputs) - 1)
+            max_idx = max(max_idx, max(edge_inputs))
+        if node_init_by_slot:
+            max_idx = max(max_idx, max(node_init_by_slot))
         for i in range(max_idx + 1):
             if i in edge_inputs:
                 inputs_resolved.append(edge_inputs[i])
+            elif i in node_init_by_slot:
+                inputs_resolved.append(node_init_by_slot[i])
             elif i < len(formal_inputs):
                 fp_name = formal_inputs[i]["name"]
                 option = formal_inputs[i].get("option", "single")
-                # Try matching an initializer by formal name.
-                if any(tp.name == fp_name for tp in initializers):
-                    inputs_resolved.append(fp_name)
-                elif option == "optional":
+                if option == "optional":
                     inputs_resolved.append("")
                 else:
                     raise BuildError(
