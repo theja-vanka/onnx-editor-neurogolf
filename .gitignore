@@ -1,5 +1,4 @@
 server/.venv
-server/.workdir
 server/**/__pycache__
 **/__pycache__
 *.pyc
