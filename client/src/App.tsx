@@ -5,6 +5,7 @@ import { OpPalette } from "./graph/OpPalette";
 import { ThemeProvider } from "./layout/ThemeProvider";
 import { ThreePane } from "./layout/ThreePane";
 import { PropertiesPanel } from "./properties/PropertiesPanel";
+import { ColorLegend } from "./tasks/ColorLegend";
 import { ExamplesPanel } from "./tasks/ExamplesPanel";
 import { TaskPicker } from "./tasks/TaskPicker";
 import { useEditor } from "./store";
@@ -80,7 +81,10 @@ export default function App() {
           </div>
         )}
         <section className="examples-strip">
-          <ExamplesPanel />
+          <ColorLegend />
+          <div className="examples-scroll">
+            <ExamplesPanel />
+          </div>
         </section>
         {ops ? (
           <ThreePane
